@@ -2,7 +2,8 @@ fastapi>=0.104.1
 uvicorn[standard]>=0.24.0
 pydantic>=2.5.0
 python-multipart>=0.0.6
-arize-otel>=0.8.1
+arize-phoenix-otel>=0.14.0
+# Do NOT install arize-otel (sends to otlp.arize.com/Arize AX); we use Phoenix Cloud
 aiohttp>=3.9.0
 opentelemetry-sdk>=1.21.0
 opentelemetry-exporter-otlp>=1.21.0
@@ -18,3 +19,4 @@ python-dotenv>=1.0.0
 requests>=2.31.0
 httpx>=0.24.0
 pandas>=2.0.0
+pytest>=7.4.0

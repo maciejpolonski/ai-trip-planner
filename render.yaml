@@ -25,7 +25,7 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: openai/gpt-4o-mini
+        value: openai/gpt-5.2
       - key: ARIZE_SPACE_ID
         sync: false
       - key: ARIZE_API_KEY

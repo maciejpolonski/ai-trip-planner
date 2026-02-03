@@ -187,6 +187,7 @@ docker-compose up --build
 
 ## Development Commands
 - Backend (dev): `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`
+- **Evals (CI)** (from `backend/`): `python -m pytest tests/ -v` — API + unit tests; no API keys needed (`TEST_MODE=1`). GitHub Actions runs these on push to `main`/`master`.
 - API smoke test: `python "test scripts"/test_api.py`
 - Synthetic evals: `python "test scripts"/synthetic_data_gen.py --base-url http://localhost:8000 --count 12`
 
@@ -198,8 +199,44 @@ docker-compose up --build
   ```
 - GET `/health` → simple status.
 
-## Notes on Tracing (Optional)
-- If `ARIZE_SPACE_ID` and `ARIZE_API_KEY` are set, OpenInference exports spans for agents/tools/LLM calls. View at https://app.arize.com.
+## Phoenix Tracing & Observability (Optional)
+
+The app sends traces to [Arize Phoenix](https://www.phoenix.arize.com/) for observability. You can see agent runs, tool calls, LLM requests, latencies, and token usage in the Phoenix dashboard.
+
+### Setup (Phoenix Cloud)
+
+1. **Sign up**: Go to [app.phoenix.arize.com](https://app.phoenix.arize.com) and create a free account.
+2. **Create a Space**: Click "Create a Space" in the dashboard and name it (e.g., "ai-trip-planner").
+3. **Get credentials**: In your Space → **Settings**:
+   - **Hostname** (OTEL endpoint) — copy this for `PHOENIX_COLLECTOR_ENDPOINT`
+   - **API Keys** — create an API key
+4. **Configure** `backend/.env` using one of these options:
+
+   **Option A** — Use Hostname from Settings (recommended):
+   ```bash
+   PHOENIX_COLLECTOR_ENDPOINT=https://app.phoenix.arize.com/s/your-space-slug
+   PHOENIX_API_KEY=your-api-key
+   ```
+
+   **Option B** — Use space slug only (endpoint is constructed for you):
+   ```bash
+   ARIZE_SPACE_ID=ai-trip-planner
+   ARIZE_API_KEY=your-api-key
+   ```
+
+5. **Restart** the backend. On startup you'll see `✓ Phoenix tracing enabled` if connected.
+6. **Troubleshooting**:
+   - Traces don't appear: Check the terminal for `⚠ Phoenix tracing failed:` and error details. Traces can take 30–60 seconds to show after batching.
+   - **"Failed to export traces to otlp.arize.com"**: That endpoint is Arize AX (different product). Ensure you're using Phoenix Cloud vars. Run `pip uninstall arize-otel` if installed, then set `PHOENIX_COLLECTOR_ENDPOINT=https://app.phoenix.arize.com/s/YOUR-SPACE-SLUG` explicitly in `.env`. Unset `OTEL_EXPORTER_OTLP_ENDPOINT` if it points to otlp.arize.com.
+
+### What you'll see
+
+- **Traces**: Each `/plan-trip` request becomes a trace with nested spans.
+- **Agents**: Research, Budget, Local, and Itinerary agent executions.
+- **Tools**: `essential_info`, `weather_brief`, `visa_brief`, `budget_basics`, `local_flavor`, etc.
+- **LLM calls**: Prompts, completions, token usage, and latency.
+
+View traces at [app.phoenix.arize.com](https://app.phoenix.arize.com).
 
 ## Optional Features
 
@@ -239,7 +276,7 @@ Recommended: Tavily (free tier: 1000 searches/month) - https://tavily.com
 ## Troubleshooting
 
 - **401/empty results**: Verify `OPENAI_API_KEY` or `OPENROUTER_API_KEY` in `backend/.env`
-- **No traces**: Ensure Arize credentials are set and reachable
+- **No traces**: Ensure Phoenix credentials are set. If you see "Failed to export traces to otlp.arize.com", uninstall `arize-otel` and use `PHOENIX_COLLECTOR_ENDPOINT` (see Phoenix setup above)
 - **Port conflicts**: Stop existing services on 3000/8000 or change ports
 - **RAG not working**: Check `ENABLE_RAG=1` and `OPENAI_API_KEY` are both set
 - **Slow responses**: Web search APIs may timeout; LLM fallback will handle it

@@ -23,92 +23,19 @@
   </header>
 
   <!-- Hero -->
-  <section class="mx-auto max-w-7xl px-6 pt-10 pb-8">
-    <div class="relative overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-600">
+  <section class="mx-auto max-w-7xl px-6 pt-6 pb-4">
+    <div class="relative overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-600">
       <div class="absolute inset-0 opacity-20">
         <img alt="Mountain landscape" class="h-full w-full object-cover"
              src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2000&auto=format&fit=crop" />
       </div>
-      <div class="relative grid gap-6 p-8 md:grid-cols-3 md:p-12">
-        <div class="md:col-span-2">
-          <h1 class="text-white text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
-            Plan Your Perfect Trip
-          </h1>
-          <p class="mt-3 text-indigo-100/90 text-base md:text-lg">
-            Discover destinations, craft smart budgets, and get a personalized day-by-day itinerary in seconds.
-          </p>
-          <div class="mt-6 flex flex-wrap items-center gap-3">
-            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
-              <i data-lucide="clock-8" class="h-4 w-4"></i>
-              Plan faster
-            </div>
-            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
-              <i data-lucide="map" class="h-4 w-4"></i>
-              Smarter routes
-            </div>
-            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
-              <i data-lucide="sparkles" class="h-4 w-4"></i>
-              Local gems
-            </div>
-          </div>
-        </div>
-        <div class="hidden md:block">
-          <div class="relative h-full w-full rounded-xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur">
-            <img alt="City minimal render" class="h-full w-full rounded-lg object-cover"
-                 src="https://images.unsplash.com/photo-1521295121783-8a321d551ad2?q=80&w=1600&auto=format&fit=crop" />
-            <div class="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-black/30 px-3 py-1.5 text-white text-xs">
-              <i data-lucide="camera" class="h-3.5 w-3.5"></i> Inspiration
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature cards -->
-    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-            <i data-lucide="search" class="h-5 w-5"></i>
-          </span>
-          <div>
-            <div class="font-semibold tracking-tight">Research</div>
-            <p class="text-sm text-neutral-600">Weather, highlights, neighborhoods.</p>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-            <i data-lucide="calendar-clock" class="h-5 w-5"></i>
-          </span>
-          <div>
-            <div class="font-semibold tracking-tight">Itineraries</div>
-            <p class="text-sm text-neutral-600">Day-by-day schedules, in minutes.</p>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-            <i data-lucide="wallet" class="h-5 w-5"></i>
-          </span>
-          <div>
-            <div class="font-semibold tracking-tight">Budget</div>
-            <p class="text-sm text-neutral-600">Smart spend suggestions.</p>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-            <i data-lucide="map-pin" class="h-5 w-5"></i>
-          </span>
-          <div>
-            <div class="font-semibold tracking-tight">Local</div>
-            <p class="text-sm text-neutral-600">Authentic finds & hidden gems.</p>
-          </div>
-        </div>
+      <div class="relative px-5 py-4 md:px-6 md:py-5">
+        <h1 class="text-white text-2xl md:text-3xl font-semibold tracking-tight">
+          Plan Your Perfect Trip
+        </h1>
+        <p class="mt-1.5 text-indigo-100/90 text-sm md:text-base">
+          Discover destinations, craft smart budgets, and get a personalized day-by-day itinerary in seconds.
+        </p>
       </div>
     </div>
   </section>
@@ -119,7 +46,7 @@
       <!-- Form -->
       <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
         <h2 class="text-2xl font-semibold tracking-tight">Plan Your Trip</h2>
-        <p class="mt-1 text-sm text-neutral-600">Enter a destination, number of days, budget, and interests.</p>
+        <p class="mt-1 text-sm text-neutral-600">Enter destination, duration, when you go, budget, and interests.</p>
 
         <form id="plannerForm" class="mt-6 space-y-4" autocomplete="off">
           <!-- Destination -->
@@ -142,6 +69,18 @@
                      class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-neutral-900 placeholder-neutral-400 shadow-sm outline-none ring-0 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200" />
               <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
                 <i data-lucide="calendar" class="h-4.5 w-4.5"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- When -->
+          <div>
+            <label for="when" class="block text-sm font-medium text-neutral-800">When</label>
+            <div class="mt-2 relative">
+              <input id="when" type="text" placeholder="e.g., March 2025, Summer, Christmas week"
+                     class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-neutral-900 placeholder-neutral-400 shadow-sm outline-none ring-0 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                <i data-lucide="calendar-days" class="h-4.5 w-4.5"></i>
               </span>
             </div>
           </div>
@@ -299,6 +238,7 @@
       const destination = (document.getElementById('destination').value || '').trim();
       const durationNum = Math.max(1, Math.min(30, parseInt(document.getElementById('duration').value || '0', 10)));
       const duration = isFinite(durationNum) ? `${durationNum} days` : '3 days';
+      const when = (document.getElementById('when').value || '').trim();
       const budget = document.getElementById('budgetValue').value || 'moderate';
       const interests = (document.getElementById('interests').value || '').trim();
 
@@ -323,7 +263,7 @@
         const resp = await fetch('/plan-trip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ destination, duration, budget, interests })
+          body: JSON.stringify({ destination, duration, when: when || undefined, budget, interests })
         });
 
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
