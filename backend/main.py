@@ -11,9 +11,9 @@ from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
-# Minimal observability via Arize/OpenInference (optional)
+# Minimal observability via Arize Phoenix/OpenInference (optional)
 try:
-    from arize.otel import register
+    from phoenix.otel import register as phoenix_register
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.litellm import LiteLLMInstrumentor
     from openinference.instrumentation import using_prompt_template, using_metadata, using_attributes
@@ -56,6 +56,7 @@ import httpx
 class TripRequest(BaseModel):
     destination: str
     duration: str
+    when: Optional[str] = None
     budget: Optional[str] = None
     interests: Optional[str] = None
     travel_style: Optional[str] = None
@@ -87,13 +88,13 @@ def _init_llm():
     if os.getenv("TEST_MODE"):
         return _Fake()
     if os.getenv("OPENAI_API_KEY"):
-        return ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, max_tokens=1500)
+        return ChatOpenAI(model="gpt-5.2", temperature=0.7, max_tokens=1500)
     elif os.getenv("OPENROUTER_API_KEY"):
         # Use OpenRouter via OpenAI-compatible client
         return ChatOpenAI(
             api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
-            model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+            model=os.getenv("OPENROUTER_MODEL", "openai/gpt-5.2"),
             temperature=0.7,
         )
     else:
@@ -521,12 +522,17 @@ class TripState(TypedDict):
 def research_agent(state: TripState) -> TripState:
     req = state["trip_request"]
     destination = req["destination"]
-    prompt_t = (
-        "You are a research assistant.\n"
-        "Gather essential information about {destination}.\n"
-        "Use tools to get weather, visa, and essential info, then summarize."
-    )
-    vars_ = {"destination": destination}
+    user_input = (req.get("user_input") or "").strip()
+    prompt_parts = [
+        "You are a travel research assistant. Your job is to gather and summarize essential information for a trip.",
+        "Destination: {destination}.",
+        "Use the available tools to get: weather and best time to visit, and general essentials (sights, etiquette, language, currency, safety).",
+        "Then provide a clear, concise summary that helps the traveler plan. Focus on practical, actionable facts.",
+    ]
+    if user_input:
+        prompt_parts.append("The traveler also said (take this into account when relevant): {user_input}")
+    prompt_t = "\n".join(prompt_parts)
+    vars_ = {"destination": destination, "user_input": user_input}
     
     messages = [SystemMessage(content=prompt_t.format(**vars_))]
     tools = [essential_info, weather_brief, visa_brief]
@@ -559,7 +565,11 @@ def research_agent(state: TripState) -> TripState:
         messages.append(res)
         messages.extend(tool_results)
         
-        synthesis_prompt = "Based on the above information, provide a comprehensive summary for the traveler."
+        synthesis_prompt = (
+            "Using the tool results above, write a single coherent summary for the traveler. "
+            "Cover: what to do based on the user input, and what to expect (weather, cultural events), entry/visa basics, and key practical tips. "
+            "Keep it concise and useful for trip planning."
+        )
         messages.append(SystemMessage(content=synthesis_prompt))
         
         # Instrument synthesis LLM call with its own prompt template
@@ -577,12 +587,16 @@ def budget_agent(state: TripState) -> TripState:
     req = state["trip_request"]
     destination, duration = req["destination"], req["duration"]
     budget = req.get("budget", "moderate")
-    prompt_t = (
-        "You are a budget analyst.\n"
-        "Analyze costs for {destination} over {duration} with budget: {budget}.\n"
-        "Use tools to get pricing information, then provide a detailed breakdown."
-    )
-    vars_ = {"destination": destination, "duration": duration, "budget": budget}
+    user_input = (req.get("user_input") or "").strip()
+    prompt_parts = [
+        "You are a travel budget analyst. Create a realistic cost breakdown for the trip.",
+        "Destination: {destination}. Duration: {duration}. Budget level: {budget}.",
+        "Use the tools to get: typical daily/lodging/transport costs and attraction prices. Then produce a clear breakdown (e.g. accommodation, food, transport, activities, extras) with rough totals or ranges where possible.",
+    ]
+    if user_input:
+        prompt_parts.append("Traveler note (consider for priorities or constraints): {user_input}")
+    prompt_t = "\n".join(prompt_parts)
+    vars_ = {"destination": destination, "duration": duration, "budget": budget, "user_input": user_input}
     
     messages = [SystemMessage(content=prompt_t.format(**vars_))]
     tools = [budget_basics, attraction_prices]
@@ -612,7 +626,11 @@ def budget_agent(state: TripState) -> TripState:
         messages.append(res)
         messages.extend(tr["messages"])
         
-        synthesis_prompt = f"Create a detailed budget breakdown for {duration} in {destination} with a {budget} budget."
+        synthesis_prompt = (
+            f"Turn the tool results above into one clear budget breakdown for {duration} in {destination} "
+            f"(budget: {budget}). Include categories (accommodation, meals, transport, activities, misc) "
+            "and realistic ranges or totals. Be practical and actionable."
+        )
         messages.append(SystemMessage(content=synthesis_prompt))
         
         # Instrument synthesis LLM call
@@ -647,20 +665,24 @@ def local_agent(state: TripState) -> TripState:
     
     context_text = "\n".join(context_lines) if context_lines else ""
     
-    prompt_t = (
-        "You are a local guide.\n"
-        "Find authentic experiences in {destination} for someone interested in: {interests}.\n"
-        "Travel style: {travel_style}. Use tools to gather local insights.\n"
-    )
-    
+    user_input = (req.get("user_input") or "").strip()
+    prompt_parts = [
+        "You are a local guide. Suggest authentic, non-touristy experiences that match the traveler's interests.",
+        "Destination: {destination}. Interests: {interests}. Travel style: {travel_style}.",
+        "Use the tools to find: local flavor, customs, and hidden gems. Then curate a short list of specific, doable suggestions (places, activities, or tips) that feel genuine to the destination.",
+    ]
+    if user_input:
+        prompt_parts.append("Traveler note (prioritize or reflect this): {user_input}")
+    prompt_parts.append("")  # newline before optional context
+    prompt_t = "\n".join(prompt_parts)
     # Add retrieved context to prompt if available
     if context_text:
-        prompt_t += "\nRelevant curated experiences from our database:\n{context}\n"
-    
+        prompt_t += "Relevant curated experiences from our database:\n{context}\n"
     vars_ = {
         "destination": destination,
         "interests": interests,
         "travel_style": travel_style,
+        "user_input": user_input,
         "context": context_text if context_text else "No curated context available.",
     }
     
@@ -694,7 +716,11 @@ def local_agent(state: TripState) -> TripState:
         messages.append(res)
         messages.extend(tr["messages"])
         
-        synthesis_prompt = f"Create a curated list of authentic experiences for someone interested in {interests} with a {travel_style} approach."
+        synthesis_prompt = (
+            f"Using the tool results above, write one curated list of authentic experiences for {destination} "
+            f"(interests: {interests}, style: {travel_style}). Be specific: name places or activities where possible, "
+            "and keep it practical for the traveler to use."
+        )
         messages.append(SystemMessage(content=synthesis_prompt))
         
         # Instrument synthesis LLM call
@@ -712,24 +738,38 @@ def itinerary_agent(state: TripState) -> TripState:
     req = state["trip_request"]
     destination = req["destination"]
     duration = req["duration"]
+    when = (req.get("when") or "").strip()
     travel_style = req.get("travel_style", "standard")
     user_input = (req.get("user_input") or "").strip()
-    
+
+    style_guide = (
+        "\n\nFORMAT (follow closely):\n"
+        "1. Open with one short, engaging sentence that sets the scene for the trip.\n"
+        "2. Use clear day headers (e.g., ## Day 1, ## Day 2).\n"
+        "3. Use bullet points for activities within each day.\n"
+        "4. Use emojis to structure content where appropriate."
+    )
+
     prompt_parts = [
-        "Create a {duration} itinerary for {destination} ({travel_style}).",
-        "",
-        "Inputs:",
-        "Research: {research}",
-        "Budget: {budget}",
-        "Local: {local}",
+        "Create a single, cohesive {duration} itinerary for {destination} that matches a {travel_style} travel style.",
     ]
+    if when:
+        prompt_parts.append("Trip timing: {when}. Use this for weather, seasonal events, and packing tips.")
+    prompt_parts.append("")
+    prompt_parts.append("Use these research summaries (do not copy them verbatim; weave key points into the itinerary):")
+    prompt_parts.append("Research: {research}")
+    prompt_parts.append("Budget: {budget}")
+    prompt_parts.append("Local experiences: {local}")
     if user_input:
-        prompt_parts.append("User input: {user_input}")
-    
+        prompt_parts.append("")
+        prompt_parts.append("Important — traveler request or preference (must be reflected in the plan): {user_input}")
+    prompt_parts.append(style_guide)
+
     prompt_t = "\n".join(prompt_parts)
     vars_ = {
         "duration": duration,
         "destination": destination,
+        "when": when,
         "travel_style": travel_style,
         "research": (state.get("research") or "")[:400],
         "budget": (state.get("budget") or "")[:400],
@@ -804,16 +844,56 @@ def health():
 
 
 # Initialize tracing once at startup, not per request
+# Phoenix Cloud: use PHOENIX_COLLECTOR_ENDPOINT (from Space Settings → Hostname) + PHOENIX_API_KEY
+# NOTE: otlp.arize.com is Arize AX (different product). We send to app.phoenix.arize.com for Phoenix Cloud.
+_ARIZE_ENABLED = False
 if _TRACING:
     try:
-        space_id = os.getenv("ARIZE_SPACE_ID")
-        api_key = os.getenv("ARIZE_API_KEY")
-        if space_id and api_key:
-            tp = register(space_id=space_id, api_key=api_key, project_name="ai-trip-planner")
+        # Prevent any OTel env vars from routing to otlp.arize.com (Arize AX) instead of Phoenix
+        otel_ep = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+        if "otlp.arize.com" in str(otel_ep):
+            os.environ.pop("OTEL_EXPORTER_OTLP_ENDPOINT", None)
+        endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT")
+        api_key = os.getenv("PHOENIX_API_KEY") or os.getenv("ARIZE_API_KEY")
+        # Fallback: construct endpoint from space slug (ARIZE_SPACE_ID) for Phoenix Cloud
+        if not endpoint and os.getenv("ARIZE_SPACE_ID"):
+            space_id = os.getenv("ARIZE_SPACE_ID").strip().strip("/")
+            if space_id and not space_id.startswith("http"):
+                endpoint = f"https://app.phoenix.arize.com/s/{space_id}"
+        if endpoint and api_key:
+            # Phoenix Cloud uses HTTP; ensure endpoint has /v1/traces path
+            if "/v1/traces" not in endpoint:
+                endpoint = endpoint.rstrip("/") + "/v1/traces"
+            # Ensure downstream code uses Phoenix endpoint, not otlp.arize.com
+            os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = endpoint
+            os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = endpoint
+            tp = phoenix_register(
+                endpoint=endpoint,
+                api_key=api_key,
+                project_name="ai-trip-planner",
+                batch=True,
+                protocol="http/protobuf",  # Phoenix Cloud requires HTTP
+            )
             LangChainInstrumentor().instrument(tracer_provider=tp, include_chains=True, include_agents=True, include_tools=True)
             LiteLLMInstrumentor().instrument(tracer_provider=tp, skip_dep_check=True)
-    except Exception:
-        pass
+            _ARIZE_ENABLED = True
+    except Exception as e:
+        print(f"⚠ Phoenix tracing failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+@app.on_event("startup")
+def _log_tracing_status():
+    if _ARIZE_ENABLED:
+        ep = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "unknown")
+        print("✓ Phoenix tracing enabled — view traces at https://app.phoenix.arize.com")
+        print(f"  (endpoint: {ep})")
+    elif os.getenv("PHOENIX_COLLECTOR_ENDPOINT") or os.getenv("ARIZE_SPACE_ID"):
+        print("⚠ Phoenix: set PHOENIX_API_KEY (or ARIZE_API_KEY) and PHOENIX_COLLECTOR_ENDPOINT or ARIZE_SPACE_ID")
+    else:
+        print("  Phoenix tracing disabled (set PHOENIX_COLLECTOR_ENDPOINT + PHOENIX_API_KEY to enable)")
+
 
 @app.post("/plan-trip", response_model=TripResponse)
 def plan_trip(req: TripRequest):
